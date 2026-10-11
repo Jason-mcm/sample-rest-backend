@@ -1,0 +1,741 @@
+{
+  "info": {
+    "name": "Team Notes",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Run in order against the local demo. Requests capture noteId and version."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "userId",
+      "value": "00000000-0000-0000-0000-000000000001"
+    },
+    {
+      "key": "teamId",
+      "value": "10000000-0000-0000-0000-000000000001"
+    },
+    {
+      "key": "noteId",
+      "value": ""
+    },
+    {
+      "key": "version",
+      "value": "0"
+    },
+    {
+      "key": "revisionNoteId",
+      "value": ""
+    },
+    {
+      "key": "revisionVersion",
+      "value": "0"
+    },
+    {
+      "key": "revisionBaseVersion",
+      "value": "0"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. My teams",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-User-Id",
+            "value": "{{userId}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/teams"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Create note",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-User-Id",
+            "value": "{{userId}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/teams/{{teamId}}/notes",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"title\":\"Planning\",\"content\":\"Initial draft\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+              "const note = pm.response.json();",
+              "pm.collectionVariables.set(\"noteId\", note.id);",
+              "pm.collectionVariables.set(\"version\", note.version);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. List notes",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-User-Id",
+            "value": "{{userId}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/teams/{{teamId}}/notes?page=0&size=20"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Bob reads shared note",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-User-Id",
+            "value": "00000000-0000-0000-0000-000000000002"
+          }
+        ],
+        "url": "{{baseUrl}}/api/teams/{{teamId}}/notes/{{noteId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Charlie cannot access Engineering",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-User-Id",
+            "value": "00000000-0000-0000-0000-000000000003"
+          }
+        ],
+        "url": "{{baseUrl}}/api/teams/{{teamId}}/notes/{{noteId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Update note",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "X-User-Id",
+            "value": "{{userId}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/teams/{{teamId}}/notes/{{noteId}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"title\":\"Revised planning\",\"content\":\"Second draft\",\"version\":{{version}}}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const note = pm.response.json();",
+              "pm.collectionVariables.set(\"noteId\", note.id);",
+              "pm.collectionVariables.set(\"version\", note.version);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Reject stale edit",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "X-User-Id",
+            "value": "{{userId}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/teams/{{teamId}}/notes/{{noteId}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"title\":\"Stale draft\",\"content\":\"Old content\",\"version\":0}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Delete note",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "X-User-Id",
+            "value": "{{userId}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/teams/{{teamId}}/notes/{{noteId}}?version={{version}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. Deleted note is missing",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-User-Id",
+            "value": "{{userId}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/teams/{{teamId}}/notes/{{noteId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Revision history and conflict resolution",
+      "description": "Run this folder in order. It creates its own note and uses separate base and current versions. Successful merges save immediately; conflicts save nothing.",
+      "item": [
+        {
+          "name": "1. Create shared draft",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "00000000-0000-0000-0000-000000000001"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/teams/{{teamId}}/notes",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Planning\",\n  \"content\": \"Budget: pending\\nStaffing: pending\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set(\"revisionNoteId\", pm.response.json().id);",
+                  "pm.collectionVariables.set(\"revisionVersion\", pm.response.json().version);",
+                  "pm.collectionVariables.set(\"revisionBaseVersion\", pm.response.json().version);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Alice updates budget",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "00000000-0000-0000-0000-000000000001"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/teams/{{teamId}}/notes/{{revisionNoteId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Planning\",\n  \"content\": \"Budget: approved\\nStaffing: pending\",\n  \"version\": {{revisionVersion}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set(\"revisionNoteId\", pm.response.json().id);",
+                  "pm.collectionVariables.set(\"revisionVersion\", pm.response.json().version);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Bob merges staffing from original revision",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "00000000-0000-0000-0000-000000000002"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/teams/{{teamId}}/notes/{{revisionNoteId}}/merge",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Planning\",\n  \"content\": \"Budget: pending\\nStaffing: hired\",\n  \"baseVersion\": {{revisionBaseVersion}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set(\"revisionNoteId\", pm.response.json().id);",
+                  "pm.collectionVariables.set(\"revisionVersion\", pm.response.json().version);",
+                  "pm.test(\"Both changes survived\", () => pm.expect(pm.response.json().content).to.eql(\"Budget: approved\\nStaffing: hired\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Browse revision history",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "00000000-0000-0000-0000-000000000001"
+              }
+            ],
+            "url": "{{baseUrl}}/api/teams/{{teamId}}/notes/{{revisionNoteId}}/revisions?page=0&size=20"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Three snapshots in newest-first order\", () => { const history = pm.response.json(); pm.expect(history.total).to.eql(3); pm.expect(history.items.map(r => r.version)).to.eql([2, 1, 0]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. Read original revision",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "00000000-0000-0000-0000-000000000001"
+              }
+            ],
+            "url": "{{baseUrl}}/api/teams/{{teamId}}/notes/{{revisionNoteId}}/revisions/{{revisionBaseVersion}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set(\"restoreTitle\", pm.response.json().title);",
+                  "pm.collectionVariables.set(\"restoreContent\", pm.response.json().content);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6. Bob proposes overlapping budget change",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "00000000-0000-0000-0000-000000000002"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/teams/{{teamId}}/notes/{{revisionNoteId}}/merge",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Planning\",\n  \"content\": \"Budget: rejected\\nStaffing: pending\",\n  \"baseVersion\": {{revisionBaseVersion}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Conflict includes all three versions\", () => { const c = pm.response.json(); pm.expect(c.code).to.eql(\"MERGE_CONFLICT\"); pm.expect(c.conflictingFields).to.include(\"content\"); pm.expect(c.base.version).to.eql(0); pm.expect(c.current.version).to.eql(2); pm.expect(c.draft.content).to.eql(\"Budget: rejected\\nStaffing: pending\"); });",
+                  "pm.collectionVariables.set(\"revisionVersion\", pm.response.json().current.version);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7. Bob saves manually reconciled content",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "00000000-0000-0000-0000-000000000002"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/teams/{{teamId}}/notes/{{revisionNoteId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Planning\",\n  \"content\": \"Budget: approved after review\\nStaffing: hired\",\n  \"version\": {{revisionVersion}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set(\"revisionNoteId\", pm.response.json().id);",
+                  "pm.collectionVariables.set(\"revisionVersion\", pm.response.json().version);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8. Restore original as a new revision",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "00000000-0000-0000-0000-000000000001"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/teams/{{teamId}}/notes/{{revisionNoteId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Planning\",\n  \"content\": \"Budget: pending\\nStaffing: pending\",\n  \"version\": {{revisionVersion}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.request.body.update(JSON.stringify({title: pm.collectionVariables.get(\"restoreTitle\"), content: pm.collectionVariables.get(\"restoreContent\"), version: Number(pm.collectionVariables.get(\"revisionVersion\"))}));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set(\"revisionNoteId\", pm.response.json().id);",
+                  "pm.collectionVariables.set(\"revisionVersion\", pm.response.json().version);",
+                  "pm.test(\"Restore creates version 4\", () => pm.expect(pm.response.json().version).to.eql(4));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9. Verify failed merge added no revision",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "00000000-0000-0000-0000-000000000001"
+              }
+            ],
+            "url": "{{baseUrl}}/api/teams/{{teamId}}/notes/{{revisionNoteId}}/revisions"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Only successful saves create history\", () => pm.expect(pm.response.json().total).to.eql(5));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10. Charlie cannot read history",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "00000000-0000-0000-0000-000000000003"
+              }
+            ],
+            "url": "{{baseUrl}}/api/teams/{{teamId}}/notes/{{revisionNoteId}}/revisions"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11. Charlie cannot merge",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "00000000-0000-0000-0000-000000000003"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/teams/{{teamId}}/notes/{{revisionNoteId}}/merge",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Planning\",\n  \"content\": \"Unauthorized\",\n  \"baseVersion\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "12. Delete note and history",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "00000000-0000-0000-0000-000000000001"
+              }
+            ],
+            "url": "{{baseUrl}}/api/teams/{{teamId}}/notes/{{revisionNoteId}}?version={{revisionVersion}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "13. History is no longer available",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "00000000-0000-0000-0000-000000000001"
+              }
+            ],
+            "url": "{{baseUrl}}/api/teams/{{teamId}}/notes/{{revisionNoteId}}/revisions"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
